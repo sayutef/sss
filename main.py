@@ -4,9 +4,11 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 
+from graphics.infrastructure.dependences import goDependencesGraphics
+from graphics.infrastructure.routes.graphics_routes import graphicsBlueprint
+
 from database.db import db
-from flask_cors import CORS
-from database.conn.connection import engine, SessionLocal
+from database.conn.connection import engine
 
 load_dotenv()
 
@@ -17,14 +19,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("JWT_SECRET_KEY")  
 
 CORS(app)
-
 db.init_app(app)
 
-# goDependencesUsers() #Dependencias de usuarios
+# Inicializar dependencias
+
+goDependencesGraphics()
+
 jwt = JWTManager(app)
 
 # Registrar Blueprints
-# app.register_blueprint(usersBlueprint, url_prefix='/users')
+
+app.register_blueprint(graphicsBlueprint, url_prefix='/graphics')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=1200, debug=True)
+    app.run(host='0.0.0.0', port=1201, debug=True)
