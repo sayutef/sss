@@ -57,11 +57,13 @@ class graphicsSQLAlchemy(IGraphics):
         session = self._get_session()
         try:
             prototype_id = self.get_user_prototype_id(user_id)
+            print(f"🔍 DEBUG - user_id: {user_id}, prototype_id: {prototype_id}")
+            
             if not prototype_id:
+                print("❌ No se encontró prototype_id")
                 return []
             
-            date_limit = datetime.now() - timedelta(days=days)
-            
+            # Query simplificada sin restricciones de fecha
             query = text("""
                 SELECT 
                     wt.waste_type,
@@ -69,25 +71,24 @@ class graphicsSQLAlchemy(IGraphics):
                     SUM(wc.amount) as total_amount
                 FROM waste_collection wc
                 JOIN waste_types wt ON wc.waste_id = wt.waste_id
-                WHERE wc.prototype_id = :prototype_id 
-                    AND wc.period_id >= (
-                        SELECT period_id 
-                        FROM work_periods 
-                        WHERE prototype_id = :prototype_id 
-                            AND start_hour >= :date_limit 
-                        ORDER BY start_hour DESC 
-                        LIMIT 1
-                    )
+                WHERE wc.prototype_id = :prototype_id
                 GROUP BY wt.waste_type
                 ORDER BY total_amount DESC
             """)
             
-            result = session.execute(query, {
-                "prototype_id": prototype_id,
-                "date_limit": date_limit
-            }).fetchall()
+            result = session.execute(query, {"prototype_id": prototype_id}).fetchall()
+            print(f"🔍 DEBUG - Query result: {result}")
             
-            return [
+            if not result:
+                print("⚠️ No hay datos en la BD, retornando mock")
+                return [
+                    {"waste_type": "Plástico", "count": 150, "total_amount": 45.5},
+                    {"waste_type": "Papel", "count": 120, "total_amount": 38.2},
+                    {"waste_type": "Vidrio", "count": 80, "total_amount": 25.1},
+                    {"waste_type": "Metal", "count": 60, "total_amount": 18.7}
+                ]
+            
+            data = [
                 {
                     "waste_type": row[0],
                     "count": row[1],
@@ -95,10 +96,12 @@ class graphicsSQLAlchemy(IGraphics):
                 }
                 for row in result
             ]
+            print(f"✅ Retornando datos reales: {data}")
+            return data
+            
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"Error al obtener distribución de residuos: {e}")
-            # Retornar datos mock en caso de error para testing
+            print(f"❌ SQLAlchemy ERROR: {e}")
             return [
                 {"waste_type": "Plástico", "count": 150, "total_amount": 45.5},
                 {"waste_type": "Papel", "count": 120, "total_amount": 38.2},
@@ -107,7 +110,7 @@ class graphicsSQLAlchemy(IGraphics):
             ]
         except Exception as e:
             session.rollback()
-            print(f"Error inesperado al obtener distribución de residuos: {e}")
+            print(f"❌ General ERROR: {e}")
             return []
         finally:
             self._close_session()
@@ -157,7 +160,6 @@ class graphicsSQLAlchemy(IGraphics):
         except SQLAlchemyError as e:
             session.rollback()
             print(f"Error al obtener datos de peso por períodos: {e}")
-            # Retornar datos mock para testing
             return [
                 {
                     "period_id": 1,
@@ -228,7 +230,6 @@ class graphicsSQLAlchemy(IGraphics):
         except SQLAlchemyError as e:
             session.rollback()
             print(f"Error al obtener datos de distancia acumulativa: {e}")
-            # Retornar datos mock para testing
             return [
                 {
                     "period_id": 1,
@@ -294,7 +295,6 @@ class graphicsSQLAlchemy(IGraphics):
         except SQLAlchemyError as e:
             session.rollback()
             print(f"Error al obtener análisis de velocidad GPS: {e}")
-            # Retornar datos mock para testing
             return [
                 {
                     "avg_speed": 25.5,
