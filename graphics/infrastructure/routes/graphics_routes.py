@@ -3,6 +3,9 @@ from graphics.infrastructure.controllers.pastelData_controller import PastelData
 from graphics.infrastructure.controllers.anilloData_controller import AnilloDataController
 from graphics.infrastructure.controllers.ojivaData_controller import OjivaDataController
 from graphics.infrastructure.controllers.speedAnalysis_controller import SpeedAnalysisController
+from graphics.infrastructure.controllers.barraData_controller import BarChartController
+from graphics.infrastructure.controllers.correlacionData_controller import CorrelationChartController
+from graphics.infrastructure.controllers.probabilidadData_controller import ProbabilityChartController
 
 graphicsBlueprint = Blueprint('graphics', __name__)
 
@@ -29,3 +32,21 @@ def getSpeedAnalysis():
     days = request.args.get('days', 7, type=int)
     controller = SpeedAnalysisController()
     return controller.getSpeedAnalysis(days)
+
+@graphicsBlueprint.route('/barras', methods=['GET'])
+def getBarChartData():
+    days = request.args.get('days', 30, type=int)
+    controller = BarChartController()
+    return controller.getBarChartData(days)
+
+@graphicsBlueprint.route('/correlacion', methods=['GET'])
+def getCorrelationData():
+    days = request.args.get('days', 30, type=int)
+    controller = CorrelationChartController()
+    return controller.getCorrelationData(days)
+
+@graphicsBlueprint.route('/probabilidad', methods=['GET'])
+def getProbabilityData():
+    days = request.args.get('days', 30, type=int)
+    controller = ProbabilityChartController()
+    return controller.getProbabilityData(days)

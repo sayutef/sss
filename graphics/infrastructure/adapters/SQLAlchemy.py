@@ -80,13 +80,8 @@ class graphicsSQLAlchemy(IGraphics):
             print(f"🔍 DEBUG - Query result: {result}")
             
             if not result:
-                print("⚠️ No hay datos en la BD, retornando mock")
-                return [
-                    {"waste_type": "Plástico", "count": 150, "total_amount": 45.5},
-                    {"waste_type": "Papel", "count": 120, "total_amount": 38.2},
-                    {"waste_type": "Vidrio", "count": 80, "total_amount": 25.1},
-                    {"waste_type": "Metal", "count": 60, "total_amount": 18.7}
-                ]
+                print("⚠️ No hay datos en la BASE DE DATOS")
+                return []
             
             data = [
                 {
@@ -102,12 +97,7 @@ class graphicsSQLAlchemy(IGraphics):
         except SQLAlchemyError as e:
             session.rollback()
             print(f"❌ SQLAlchemy ERROR: {e}")
-            return [
-                {"waste_type": "Plástico", "count": 150, "total_amount": 45.5},
-                {"waste_type": "Papel", "count": 120, "total_amount": 38.2},
-                {"waste_type": "Vidrio", "count": 80, "total_amount": 25.1},
-                {"waste_type": "Metal", "count": 60, "total_amount": 18.7}
-            ]
+            return []
         except Exception as e:
             session.rollback()
             print(f"❌ General ERROR: {e}")
@@ -160,24 +150,7 @@ class graphicsSQLAlchemy(IGraphics):
         except SQLAlchemyError as e:
             session.rollback()
             print(f"Error al obtener datos de peso por períodos: {e}")
-            return [
-                {
-                    "period_id": 1,
-                    "start_hour": datetime.now().isoformat(),
-                    "end_hour": (datetime.now() + timedelta(hours=8)).isoformat(),
-                    "day_work": "Lunes",
-                    "avg_weight": 25.5,
-                    "readings_count": 45
-                },
-                {
-                    "period_id": 2,
-                    "start_hour": (datetime.now() - timedelta(days=1)).isoformat(),
-                    "end_hour": (datetime.now() - timedelta(days=1) + timedelta(hours=8)).isoformat(),
-                    "day_work": "Domingo",
-                    "avg_weight": 30.2,
-                    "readings_count": 52
-                }
-            ]
+            return []
         except Exception as e:
             session.rollback()
             print(f"Error inesperado al obtener datos de peso por períodos: {e}")
@@ -230,22 +203,7 @@ class graphicsSQLAlchemy(IGraphics):
         except SQLAlchemyError as e:
             session.rollback()
             print(f"Error al obtener datos de distancia acumulativa: {e}")
-            return [
-                {
-                    "period_id": 1,
-                    "distance_traveled": 5.2,
-                    "weight_waste": 15.3,
-                    "start_hour": datetime.now().isoformat(),
-                    "cumulative_distance": 5.2
-                },
-                {
-                    "period_id": 2,
-                    "distance_traveled": 3.8,
-                    "weight_waste": 12.1,
-                    "start_hour": (datetime.now() + timedelta(hours=1)).isoformat(),
-                    "cumulative_distance": 9.0
-                }
-            ]
+            return []
         except Exception as e:
             session.rollback()
             print(f"Error inesperado al obtener datos de distancia acumulativa: {e}")
@@ -295,22 +253,7 @@ class graphicsSQLAlchemy(IGraphics):
         except SQLAlchemyError as e:
             session.rollback()
             print(f"Error al obtener análisis de velocidad GPS: {e}")
-            return [
-                {
-                    "avg_speed": 25.5,
-                    "max_speed": 45.2,
-                    "min_speed": 5.1,
-                    "total_readings": 156,
-                    "date": datetime.now().date().isoformat()
-                },
-                {
-                    "avg_speed": 22.8,
-                    "max_speed": 38.7,
-                    "min_speed": 3.2,
-                    "total_readings": 142,
-                    "date": (datetime.now() - timedelta(days=1)).date().isoformat()
-                }
-            ]
+            return []
         except Exception as e:
             session.rollback()
             print(f"Error inesperado al obtener análisis de velocidad GPS: {e}")
@@ -321,3 +264,150 @@ class graphicsSQLAlchemy(IGraphics):
     def __del__(self):
         """Asegurar que la sesión se cierra al destruir el objeto"""
         self._close_session()
+        
+    def get_bar_chart_data(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
+        """Obtiene datos para la gráfica de barras (peso promedio por día de la semana y hora)"""
+        session = self._get_session()
+        try:
+            prototype_id = self.get_user_prototype_id(user_id)
+            if not prototype_id:
+                return []
+
+            date_limit = datetime.now() - timedelta(days=days)
+
+            query = text("""
+                SELECT 
+                    EXTRACT(DOW FROM wp.start_hour) AS day_of_week,
+                    EXTRACT(HOUR FROM wd.hour_period) AS hour,
+                    AVG(wd.weight) AS avg_weight
+                FROM work_periods wp
+                JOIN weight_data wd ON wp.period_id = wd.period_id
+                WHERE wp.prototype_id = :prototype_id
+                    AND wp.start_hour >= :date_limit
+                GROUP BY day_of_week, hour
+                ORDER BY day_of_week, hour
+            """)
+
+            result = session.execute(query, {
+                "prototype_id": prototype_id,
+                "date_limit": date_limit
+            }).fetchall()
+
+            return [
+                {
+                    "day_of_week": int(row[0]),
+                    "hour": int(row[1]),
+                    "avg_weight": float(row[2]) if row[2] else 0
+                }
+                for row in result
+            ]
+        except SQLAlchemyError as e:
+            session.rollback()
+            print(f"Error al obtener datos de barras: {e}")
+            return []
+        except Exception as e:
+            session.rollback()
+            print(f"Error inesperado al obtener datos de barras: {e}")
+            return []
+        finally:
+            self._close_session()
+
+    def get_correlation_data(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
+        """Obtiene datos para la gráfica de correlación (distancia vs peso)"""
+        session = self._get_session()
+        try:
+            prototype_id = self.get_user_prototype_id(user_id)
+            if not prototype_id:
+                return []
+
+            date_limit = datetime.now() - timedelta(days=days)
+
+            query = text("""
+                SELECT 
+                    r.distance_traveled,
+                    r.weight_waste,
+                    wp.start_hour
+                FROM readings r
+                JOIN work_periods wp ON r.period_id = wp.period_id
+                WHERE wp.prototype_id = :prototype_id
+                    AND wp.start_hour >= :date_limit
+            """)
+
+            result = session.execute(query, {
+                "prototype_id": prototype_id,
+                "date_limit": date_limit
+            }).fetchall()
+
+            return [
+                {
+                    "distance_traveled": float(row[0]) if row[0] else 0,
+                    "weight_waste": float(row[1]) if row[1] else 0,
+                    "start_hour": row[2].isoformat() if row[2] else None
+                }
+                for row in result
+            ]
+        except SQLAlchemyError as e:
+            session.rollback()
+            print(f"Error al obtener datos de correlación: {e}")
+            return []
+        except Exception as e:
+            session.rollback()
+            print(f"Error inesperado al obtener datos de correlación: {e}")
+            return []
+        finally:
+            self._close_session()
+
+    def get_probability_data(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
+        """Obtiene datos acumulativos de peso para gráfica de ojiva (probabilidad)"""
+        session = self._get_session()
+        try:
+            prototype_id = self.get_user_prototype_id(user_id)
+            if not prototype_id:
+                return []
+
+            date_limit = datetime.now() - timedelta(days=days)
+
+            query = text("""
+                SELECT 
+                    DATE(wp.start_hour) AS day,
+                    SUM(r.weight_waste) AS total_weight
+                FROM readings r
+                JOIN work_periods wp ON r.period_id = wp.period_id
+                WHERE wp.prototype_id = :prototype_id
+                    AND wp.start_hour >= :date_limit
+                GROUP BY day
+                ORDER BY day
+            """)
+
+            result = session.execute(query, {
+                "prototype_id": prototype_id,
+                "date_limit": date_limit
+            }).fetchall()
+
+            # Calculamos acumulado y porcentaje
+            total_weight = sum(float(row[1]) for row in result if row[1])
+            cumulative = 0
+            data = []
+
+            for row in result:
+                daily_weight = float(row[1]) if row[1] else 0
+                cumulative += daily_weight
+                probability = (cumulative / total_weight) * 100 if total_weight else 0
+                data.append({
+                    "day": row[0].isoformat(),
+                    "daily_weight": daily_weight,
+                    "cumulative_weight": cumulative,
+                    "probability_percent": round(probability, 2)
+                })
+
+            return data
+        except SQLAlchemyError as e:
+            session.rollback()
+            print(f"Error al obtener datos de probabilidad: {e}")
+            return []
+        except Exception as e:
+            session.rollback()
+            print(f"Error inesperado al obtener datos de probabilidad: {e}")
+            return []
+        finally:
+            self._close_session()
