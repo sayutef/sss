@@ -10,7 +10,6 @@ class graphicsSQLAlchemy(IGraphics):
         self.session = None
     
     def _get_session(self):
-        """Crea una nueva sesión para cada operación"""
         if self.session:
             try:
                 self.session.close()
@@ -20,7 +19,6 @@ class graphicsSQLAlchemy(IGraphics):
         return self.session
     
     def _close_session(self):
-        """Cierra la sesión actual"""
         if self.session:
             try:
                 self.session.close()
@@ -30,7 +28,6 @@ class graphicsSQLAlchemy(IGraphics):
                 self.session = None
     
     def get_user_prototype_id(self, user_id: int) -> str:
-        """Obtiene el prototype_id del usuario"""
         session = self._get_session()
         try:
             query = text("""
@@ -40,30 +37,22 @@ class graphicsSQLAlchemy(IGraphics):
                 LIMIT 1
             """)
             result = session.execute(query, {"user_id": user_id}).fetchone()
-            return result[0] if result else None
+            if not result:
+                raise ValueError(f"No se encontró prototype_id para user_id={user_id}")
+            return result[0]
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"Error al obtener prototype_id: {e}")
-            raise e
+            raise RuntimeError(f"Error SQLAlchemy al obtener prototype_id: {e}") from e
         except Exception as e:
             session.rollback()
-            print(f"Error inesperado al obtener prototype_id: {e}")
-            raise e
+            raise RuntimeError(f"Error inesperado al obtener prototype_id: {e}") from e
         finally:
             self._close_session()
-    
+
     def get_waste_types_distribution(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
-        """Obtiene la distribución de tipos de residuos para gráfico de pastel"""
         session = self._get_session()
         try:
             prototype_id = self.get_user_prototype_id(user_id)
-            print(f"🔍 DEBUG - user_id: {user_id}, prototype_id: {prototype_id}")
-            
-            if not prototype_id:
-                print("❌ No se encontró prototype_id")
-                return []
-            
-            # Query simplificada sin restricciones de fecha
             query = text("""
                 SELECT 
                     wt.waste_type,
@@ -75,15 +64,10 @@ class graphicsSQLAlchemy(IGraphics):
                 GROUP BY wt.waste_type
                 ORDER BY total_amount DESC
             """)
-            
             result = session.execute(query, {"prototype_id": prototype_id}).fetchall()
-            print(f"🔍 DEBUG - Query result: {result}")
-            
             if not result:
-                print("⚠️ No hay datos en la BASE DE DATOS")
-                return []
-            
-            data = [
+                raise ValueError(f"No se encontraron datos de tipos de residuos para prototype_id={prototype_id}")
+            return [
                 {
                     "waste_type": row[0],
                     "count": row[1],
@@ -91,30 +75,20 @@ class graphicsSQLAlchemy(IGraphics):
                 }
                 for row in result
             ]
-            print(f"✅ Retornando datos reales: {data}")
-            return data
-            
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"❌ SQLAlchemy ERROR: {e}")
-            return []
+            raise RuntimeError(f"Error SQLAlchemy al obtener distribución de residuos: {e}") from e
         except Exception as e:
             session.rollback()
-            print(f"❌ General ERROR: {e}")
-            return []
+            raise RuntimeError(f"Error inesperado al obtener distribución de residuos: {e}") from e
         finally:
             self._close_session()
-    
+
     def get_weight_periods_data(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
-        """Obtiene datos de peso por períodos para gráfico de anillo"""
         session = self._get_session()
         try:
             prototype_id = self.get_user_prototype_id(user_id)
-            if not prototype_id:
-                return []
-            
             date_limit = datetime.now() - timedelta(days=days)
-            
             query = text("""
                 SELECT 
                     wp.period_id,
@@ -130,12 +104,12 @@ class graphicsSQLAlchemy(IGraphics):
                 GROUP BY wp.period_id, wp.start_hour, wp.end_hour, wp.day_work
                 ORDER BY wp.start_hour DESC
             """)
-            
             result = session.execute(query, {
                 "prototype_id": prototype_id,
                 "date_limit": date_limit
             }).fetchall()
-            
+            if not result:
+                raise ValueError(f"No se encontraron datos de peso por períodos para prototype_id={prototype_id} desde {date_limit}")
             return [
                 {
                     "period_id": row[0],
@@ -149,25 +123,18 @@ class graphicsSQLAlchemy(IGraphics):
             ]
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"Error al obtener datos de peso por períodos: {e}")
-            return []
+            raise RuntimeError(f"Error SQLAlchemy al obtener datos de peso por períodos: {e}") from e
         except Exception as e:
             session.rollback()
-            print(f"Error inesperado al obtener datos de peso por períodos: {e}")
-            return []
+            raise RuntimeError(f"Error inesperado al obtener datos de peso por períodos: {e}") from e
         finally:
             self._close_session()
-    
+
     def get_distance_cumulative_data(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
-        """Obtiene datos de distancia acumulativa para gráfico ojiva"""
         session = self._get_session()
         try:
             prototype_id = self.get_user_prototype_id(user_id)
-            if not prototype_id:
-                return []
-            
             date_limit = datetime.now() - timedelta(days=days)
-            
             query = text("""
                 SELECT 
                     r.period_id,
@@ -184,12 +151,12 @@ class graphicsSQLAlchemy(IGraphics):
                     AND wp.start_hour >= :date_limit
                 ORDER BY wp.start_hour
             """)
-            
             result = session.execute(query, {
                 "prototype_id": prototype_id,
                 "date_limit": date_limit
             }).fetchall()
-            
+            if not result:
+                raise ValueError(f"No se encontraron datos de distancia acumulativa para prototype_id={prototype_id} desde {date_limit}")
             return [
                 {
                     "period_id": row[0],
@@ -202,25 +169,18 @@ class graphicsSQLAlchemy(IGraphics):
             ]
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"Error al obtener datos de distancia acumulativa: {e}")
-            return []
+            raise RuntimeError(f"Error SQLAlchemy al obtener datos de distancia acumulativa: {e}") from e
         except Exception as e:
             session.rollback()
-            print(f"Error inesperado al obtener datos de distancia acumulativa: {e}")
-            return []
+            raise RuntimeError(f"Error inesperado al obtener datos de distancia acumulativa: {e}") from e
         finally:
             self._close_session()
-    
+
     def get_gps_speed_analysis(self, user_id: int, days: int = 7) -> List[Dict[str, Any]]:
-        """Obtiene análisis de velocidad GPS"""
         session = self._get_session()
         try:
             prototype_id = self.get_user_prototype_id(user_id)
-            if not prototype_id:
-                return []
-            
             date_limit = datetime.now() - timedelta(days=days)
-            
             query = text("""
                 SELECT 
                     AVG(speed) as avg_speed,
@@ -234,12 +194,12 @@ class graphicsSQLAlchemy(IGraphics):
                 GROUP BY DATE(date_gps)
                 ORDER BY date DESC
             """)
-            
             result = session.execute(query, {
                 "prototype_id": prototype_id,
                 "date_limit": date_limit
             }).fetchall()
-            
+            if not result:
+                raise ValueError(f"No se encontraron datos de análisis GPS para prototype_id={prototype_id} desde {date_limit}")
             return [
                 {
                     "avg_speed": float(row[0]) if row[0] else 0,
@@ -252,29 +212,18 @@ class graphicsSQLAlchemy(IGraphics):
             ]
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"Error al obtener análisis de velocidad GPS: {e}")
-            return []
+            raise RuntimeError(f"Error SQLAlchemy al obtener análisis de velocidad GPS: {e}") from e
         except Exception as e:
             session.rollback()
-            print(f"Error inesperado al obtener análisis de velocidad GPS: {e}")
-            return []
+            raise RuntimeError(f"Error inesperado al obtener análisis de velocidad GPS: {e}") from e
         finally:
             self._close_session()
-    
-    def __del__(self):
-        """Asegurar que la sesión se cierra al destruir el objeto"""
-        self._close_session()
-        
+
     def get_bar_chart_data(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
-        """Obtiene datos para la gráfica de barras (peso promedio por día de la semana y hora)"""
         session = self._get_session()
         try:
             prototype_id = self.get_user_prototype_id(user_id)
-            if not prototype_id:
-                return []
-
             date_limit = datetime.now() - timedelta(days=days)
-
             query = text("""
                 SELECT 
                     EXTRACT(DOW FROM wp.start_hour) AS day_of_week,
@@ -287,12 +236,12 @@ class graphicsSQLAlchemy(IGraphics):
                 GROUP BY day_of_week, hour
                 ORDER BY day_of_week, hour
             """)
-
             result = session.execute(query, {
                 "prototype_id": prototype_id,
                 "date_limit": date_limit
             }).fetchall()
-
+            if not result:
+                raise ValueError(f"No se encontraron datos para gráfica de barras para prototype_id={prototype_id} desde {date_limit}")
             return [
                 {
                     "day_of_week": int(row[0]),
@@ -303,25 +252,18 @@ class graphicsSQLAlchemy(IGraphics):
             ]
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"Error al obtener datos de barras: {e}")
-            return []
+            raise RuntimeError(f"Error SQLAlchemy al obtener datos de barras: {e}") from e
         except Exception as e:
             session.rollback()
-            print(f"Error inesperado al obtener datos de barras: {e}")
-            return []
+            raise RuntimeError(f"Error inesperado al obtener datos de barras: {e}") from e
         finally:
             self._close_session()
 
     def get_correlation_data(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
-        """Obtiene datos para la gráfica de correlación (distancia vs peso)"""
         session = self._get_session()
         try:
             prototype_id = self.get_user_prototype_id(user_id)
-            if not prototype_id:
-                return []
-
             date_limit = datetime.now() - timedelta(days=days)
-
             query = text("""
                 SELECT 
                     r.distance_traveled,
@@ -332,12 +274,12 @@ class graphicsSQLAlchemy(IGraphics):
                 WHERE wp.prototype_id = :prototype_id
                     AND wp.start_hour >= :date_limit
             """)
-
             result = session.execute(query, {
                 "prototype_id": prototype_id,
                 "date_limit": date_limit
             }).fetchall()
-
+            if not result:
+                raise ValueError(f"No se encontraron datos para gráfica de correlación para prototype_id={prototype_id} desde {date_limit}")
             return [
                 {
                     "distance_traveled": float(row[0]) if row[0] else 0,
@@ -348,25 +290,18 @@ class graphicsSQLAlchemy(IGraphics):
             ]
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"Error al obtener datos de correlación: {e}")
-            return []
+            raise RuntimeError(f"Error SQLAlchemy al obtener datos de correlación: {e}") from e
         except Exception as e:
             session.rollback()
-            print(f"Error inesperado al obtener datos de correlación: {e}")
-            return []
+            raise RuntimeError(f"Error inesperado al obtener datos de correlación: {e}") from e
         finally:
             self._close_session()
 
     def get_probability_data(self, user_id: int, days: int = 30) -> List[Dict[str, Any]]:
-        """Obtiene datos acumulativos de peso para gráfica de ojiva (probabilidad)"""
         session = self._get_session()
         try:
             prototype_id = self.get_user_prototype_id(user_id)
-            if not prototype_id:
-                return []
-
             date_limit = datetime.now() - timedelta(days=days)
-
             query = text("""
                 SELECT 
                     DATE(wp.start_hour) AS day,
@@ -378,17 +313,16 @@ class graphicsSQLAlchemy(IGraphics):
                 GROUP BY day
                 ORDER BY day
             """)
-
             result = session.execute(query, {
                 "prototype_id": prototype_id,
                 "date_limit": date_limit
             }).fetchall()
+            if not result:
+                raise ValueError(f"No se encontraron datos para gráfica de probabilidad para prototype_id={prototype_id} desde {date_limit}")
 
-            # Calculamos acumulado y porcentaje
             total_weight = sum(float(row[1]) for row in result if row[1])
             cumulative = 0
             data = []
-
             for row in result:
                 daily_weight = float(row[1]) if row[1] else 0
                 cumulative += daily_weight
@@ -399,15 +333,15 @@ class graphicsSQLAlchemy(IGraphics):
                     "cumulative_weight": cumulative,
                     "probability_percent": round(probability, 2)
                 })
-
             return data
         except SQLAlchemyError as e:
             session.rollback()
-            print(f"Error al obtener datos de probabilidad: {e}")
-            return []
+            raise RuntimeError(f"Error SQLAlchemy al obtener datos de probabilidad: {e}") from e
         except Exception as e:
             session.rollback()
-            print(f"Error inesperado al obtener datos de probabilidad: {e}")
-            return []
+            raise RuntimeError(f"Error inesperado al obtener datos de probabilidad: {e}") from e
         finally:
             self._close_session()
+
+    def __del__(self):
+        self._close_session()

@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import jsonify
 from graphics.application.useCases.getCorrelacion_useCase import GetCorrelationData
 from graphics.infrastructure.dependences import getSQLAlchemy
 
@@ -7,9 +7,8 @@ class CorrelationChartController:
         self.SQLAlchemy = getSQLAlchemy()
         self.use_case = GetCorrelationData(db=self.SQLAlchemy)
 
-    def getCorrelationData(self, days: int = 30):
+    def getCorrelationData(self, days: int, user_id: int):
         try:
-            user_id = request.args.get('user_id', 1, type=int)
             data = self.use_case.run(user_id, days)
             return jsonify({
                 "status": True,

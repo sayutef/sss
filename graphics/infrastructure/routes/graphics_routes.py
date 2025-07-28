@@ -9,44 +9,44 @@ from graphics.infrastructure.controllers.probabilidadData_controller import Prob
 
 graphicsBlueprint = Blueprint('graphics', __name__)
 
-@graphicsBlueprint.route('/pastel', methods=['GET'])
-def getPastelData():
+@graphicsBlueprint.route('/pastel/<int:user_id>', methods=['GET'])
+def getPastelData(user_id):
     days = request.args.get('days', 30, type=int)
     controller = PastelDataController()
-    return controller.getPastelData(days)
+    return controller.getPastelData(days, user_id)
 
-@graphicsBlueprint.route('/anillo', methods=['GET'])
-def getAnilloData():
+@graphicsBlueprint.route('/anillo/<int:user_id>', methods=['GET'])
+def getAnilloData(user_id):
     days = request.args.get('days', 30, type=int)
     controller = AnilloDataController()
-    return controller.getAnilloData(days)
+    return controller.getAnilloData(days, user_id)
 
-@graphicsBlueprint.route('/ojiva', methods=['GET'])
-def getOjivaData():
+@graphicsBlueprint.route('/ojiva/<int:user_id>', methods=['GET'])
+def getOjivaData(user_id):
     days = request.args.get('days', 30, type=int)
     controller = OjivaDataController()
-    return controller.getOjivaData(days)
+    return controller.getOjivaData(days, user_id)
 
-@graphicsBlueprint.route('/speed', methods=['GET'])
-def getSpeedAnalysis():
+@graphicsBlueprint.route('/speed/<int:user_id>', methods=['GET'])
+def getSpeedAnalysis(user_id):
     days = request.args.get('days', 7, type=int)
     controller = SpeedAnalysisController()
-    return controller.getSpeedAnalysis(days)
+    return controller.getSpeedAnalysis(days, user_id)
 
-@graphicsBlueprint.route('/barras', methods=['GET'])
-def getBarChartData():
+@graphicsBlueprint.route('/barras/<int:user_id>', methods=['GET'])
+def getBarChartData(user_id):
     days = request.args.get('days', 30, type=int)
     controller = BarChartController()
-    return controller.getBarChartData(days)
+    return controller.getBarChartData(days, user_id)
 
-@graphicsBlueprint.route('/correlacion', methods=['GET'])
-def getCorrelationData():
+@graphicsBlueprint.route('/correlacion/<int:user_id>', methods=['GET'])
+def getCorrelationData(user_id):
     days = request.args.get('days', 30, type=int)
     controller = CorrelationChartController()
-    return controller.getCorrelationData(days)
+    return controller.getCorrelationData(days, user_id)
 
-@graphicsBlueprint.route('/probabilidad', methods=['GET'])
-def getProbabilityData():
+@graphicsBlueprint.route('/probabilidad/<int:user_id>', methods=['GET'])
+def getProbabilityData(user_id):
     days = request.args.get('days', 30, type=int)
     controller = ProbabilityChartController()
-    return controller.getProbabilityData(days)
+    return controller.getProbabilityData(days, user_id)

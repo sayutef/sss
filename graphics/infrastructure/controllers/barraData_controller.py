@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import jsonify
 from graphics.application.useCases.getBarrasData_useCase import GetBarChartData
 from graphics.infrastructure.dependences import getSQLAlchemy
 
@@ -7,9 +7,8 @@ class BarChartController:
         self.SQLAlchemy = getSQLAlchemy()
         self.use_case = GetBarChartData(db=self.SQLAlchemy)
 
-    def getBarChartData(self, days: int = 30):
+    def getBarChartData(self, days: int, user_id: int):
         try:
-            user_id = request.args.get('user_id', 1, type=int)
             data = self.use_case.run(user_id, days)
             return jsonify({
                 "status": True,

@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import jsonify
 from graphics.application.useCases.getPastelData_useCase import GetPastelData
 from graphics.infrastructure.dependences import getSQLAlchemy
 # from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -9,17 +9,11 @@ class PastelDataController:
         self.use_case = GetPastelData(db=self.SQLAlchemy)
     
     #@jwt_required()
-    def getPastelData(self, days: int = 30):
+    def getPastelData(self, days: int, user_id: int):
         try:
             # user_id = get_jwt_identity()
-            user_id = request.args.get('user_id', 1, type=int) 
-            #if not user_id:
-             #   return jsonify({
-              #      "status": False,
-               #     "error": "No se proporcionó ID de usuario."
-                #}), 401
             
-            data = self.use_case.run(int(user_id), days)
+            data = self.use_case.run(user_id, days)
             
             return jsonify({
                 "status": True,

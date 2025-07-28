@@ -1,4 +1,4 @@
-from flask import jsonify, request
+from flask import jsonify
 from graphics.application.useCases.getAnilloData_useCase import GetAnilloData
 from graphics.infrastructure.dependences import getSQLAlchemy
 # from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -9,17 +9,11 @@ class AnilloDataController:
         self.use_case = GetAnilloData(db=self.SQLAlchemy)
     
     #@jwt_required()
-    def getAnilloData(self, days: int = 30):
+    def getAnilloData(self, days: int, user_id: int):
         try:
-            user_id = request.args.get('user_id', 1, type=int) 
-            """ user_id = get_jwt_identity()
-            if not user_id:
-                return jsonify({
-                    "status": False,
-                    "error": "No se proporcionó ID de usuario."
-                }), 401 """
+            # user_id = get_jwt_identity()
             
-            data = self.use_case.run(int(user_id), days)
+            data = self.use_case.run(user_id, days)
             
             return jsonify({
                 "status": True,
